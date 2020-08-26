@@ -172,4 +172,144 @@ class GradeSerializers(serializers.Serializer):
 |ListField|ListField(child=, min_length=None, max_length=None)|
 |DictField|DictField(child=)|
 
+
+|参数名称|作用|
+| ------------ | ------------ |
+|read_only|表明该字段仅用于序列化输出，默认False|
+|write_only|表明该字段仅用于反序列化输入，默认False|
+|required|表明该字段在反序列化时必须输入，默认False|
+|default|反序列化时使用的默认值，如果不指定，在传递时默认值是0|
+|allow_null|表明该字段是否允许传入None，默认False|
+|validators|该字段使用的验证器|
+|error_messages|包含错误编号与错误信息的字典|
+|label|用于HTML展示API页面时，显示的字段名称|
+|help_text|用于HTML展示API页面时，显示的字段帮助提示信息|
+
+---
+
+### views视图
+
+
+```python
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from api import serializers
+from api import models
+
+@method_decorator(csrf_exempt,name='dispatch')
+class Index(APIView):
+
+    def get(self,request,*args,**kwargs):
+
+        obj = models.Master.objects.all()
+        serializer = serializers.MasterSerializers(obj,many=True)
+        status = {'status':'success','code':200,'message':serializer.data}
+        return Response(status)
+
+    def post(self, request, *args, **kwargs):
+
+        message = request.data
+        serializer = serializers.MasterSerializers(data=message)
+        success = serializer.is_valid(raise_exception=True)
+        if success:
+            info = serializer.save()
+            data = info['name'] + '添加成功！'
+            result = {'status': 'success', 'code': 200, 'message': data}
+            return Response(result)
+        else:
+            result = {'status': 'fail', 'code': 400, 'message': serializer.errors}
+            return Response(result)
+
+    def put(self, request, *args, **kwargs):
+
+        data = request.data
+        master = models.Master.objects.filter(id=data['id']).first()
+        master_obj = serializers.MasterSerializers(instance=master, data=data, partial=True)
+        if master_obj.is_valid():
+            master_obj.save()
+            return Response(master_obj.data)
+        else:
+            return Response(master_obj.errors)
+
+    def delete(self, request, *args, **kwargs):
+        data = request.data
+        obj = models.Master.objects.filter(id=data['id']).first()
+        if obj is not None:
+            obj.delete()
+            return Response({'success': '删除成功！'})
+        else:
+            return Response({'fail': '数据不存在！'})
+
+
+@method_decorator(csrf_exempt,name='dispatch')
+class Index1(APIView):
+    # 查
+    def get(self,request,*args,**kwargs):
+
+        teacher_obj = models.Grade.objects.filter(master_id=2).first()
+        # teacher_obj = models.Grade.objects.all()
+        serializer = serializers.GradeSerializers(teacher_obj)
+        data = {'code':200,'status':'success','message':serializer.data}
+
+        return Response(data)
+    # 增
+    def post(self,request):
+
+        message = request.data
+        serializer = serializers.GradeSerializers(data=message)
+        success = serializer.is_valid(raise_exception=True)
+        if success:
+            info = serializer.save()
+            data = info['name']+'添加成功！'
+            result = {'status':'success','code':200,'message':data}
+            print('PASS')
+            return Response(result)
+        else:
+            result = {'status':'fail','code':400,'message':serializer.errors}
+            return Response(result)
+
+    # 改
+    def put(self,request):
+        data = request.data
+        grade = models.Grade.objects.filter(id=data['id']).first()
+        grade_obj = serializers.GradeSerializers(instance=grade,data=data,partial=True)
+        if grade_obj.is_valid():
+            grade_obj.save()
+            return Response(grade_obj.data)
+        else:
+            return Response(grade_obj.errors)
+
+    # 删
+    def delete(self,request):
+        data = request.data
+        grade = models.Grade.objects.filter(id=data['id']).first()
+        if grade is not None:
+            grade.delete()
+            return Response({'success':'删除成功！'})
+        else:
+            return Response({'fail':'数据不存在！'})
+```
+
+**说明**
+
+```python
+# method_decorator和csrf_exempt是关闭csrf验证
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+
+# many=True 显示多条数据
+serializer = serializers.MasterSerializers(obj,many=True)
+
+# partial=True 表示局部提交/局部更新
+master_obj = serializers.MasterSerializers(instance=master, data=data, partial=True)
+
+
+```
+
+---
+
+### 接下你就可以打开POSTMAN开始测试了
+
 ---
